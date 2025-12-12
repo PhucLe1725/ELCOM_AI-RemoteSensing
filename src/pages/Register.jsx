@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import bgLogin from '../assets/bglogin.png';
 import logoElcom from '../assets/LogoElcom.png';
+import authService from '../services/auth.service';
 
 const Register = () => {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -12,6 +15,8 @@ const Register = () => {
     confirmPassword: '',
     agreeToTerms: false,
   });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -21,10 +26,57 @@ const Register = () => {
     }));
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    // Handle registration logic here
-    console.log('Register:', formData);
+    setError('');
+
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      setError('Mật khẩu xác nhận không khớp');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Mật khẩu phải có ít nhất 6 ký tự');
+      return;
+    }
+
+    if (!formData.agreeToTerms) {
+      setError('Vui lòng đồng ý với điều khoản dịch vụ');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Backend API sử dụng username thay vì fullName
+      const response = await authService.register(
+        formData.fullName, // sẽ được dùng làm username
+        formData.email,
+        formData.password,
+        'User' // role mặc định là User
+      );
+      
+      if (response.success) {
+        // Đăng ký thành công, redirect về login
+        alert('Đăng ký thành công! Vui lòng đăng nhập.');
+        navigate('/login');
+      } else {
+        setError(response.message || 'Đăng ký thất bại');
+      }
+    } catch (err) {
+      // Xử lý validation errors từ backend
+      if (err.errors) {
+        const errorMessages = Object.values(err.errors).flat().join(', ');
+        setError(errorMessages);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Có lỗi xảy ra. Vui lòng thử lại sau.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -53,6 +105,13 @@ const Register = () => {
           <p className="text-sm text-center mb-8" style={{ color: '#000B80' }}>
             Vui lòng điền thông tin của bạn để bắt đầu!
           </p>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-3 rounded-lg bg-red-100 border border-red-300">
+              <p className="text-sm text-red-700 text-center">{error}</p>
+            </div>
+          )}
 
           {/* Register Form */}
           <form onSubmit={handleRegister}>
@@ -222,11 +281,13 @@ const Register = () => {
             {/* Register Button */}
             <button
               type="submit"
+              disabled={loading}
               className="w-full bg-[#003AAB] text-white font-medium py-2.5 rounded-lg 
                        hover:bg-[#002a7f] transition-all duration-200 shadow-lg 
-                       hover:shadow-xl transform hover:-translate-y-0.5"
+                       hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 
+                       disabled:cursor-not-allowed disabled:transform-none"
             >
-              Xác nhận
+              {loading ? 'Đang xử lý...' : 'Xác nhận'}
             </button>
           </form>
 

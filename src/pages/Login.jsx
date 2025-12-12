@@ -1,16 +1,44 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import bgLogin from '../assets/bglogin.png';
 import logoElcom from '../assets/LogoElcom.png';
+import authService from '../services/auth.service';
 
 const Login = () => {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log('Login:', { email, password });
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await authService.login(email, password);
+      
+      if (response.success) {
+        // Đăng nhập thành công, redirect về dashboard hoặc trang chủ
+        navigate('/dashboard');
+      } else {
+        setError(response.message || 'Đăng nhập thất bại');
+      }
+    } catch (err) {
+      // Xử lý validation errors từ backend
+      if (err.errors) {
+        const errorMessages = Object.values(err.errors).flat().join(', ');
+        setError(errorMessages);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Có lỗi xảy ra. Vui lòng thử lại sau.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {
@@ -43,6 +71,13 @@ const Login = () => {
           <p className="text-sm text-center mb-8" style={{ color: '#000B80' }}>
             Chào mừng trở lại. Đăng nhập để tiếp tục.
           </p>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-3 rounded-lg bg-red-100 border border-red-300">
+              <p className="text-sm text-red-700 text-center">{error}</p>
+            </div>
+          )}
 
           {/* Login Form */}
           <form onSubmit={handleLogin}>
@@ -129,11 +164,13 @@ const Login = () => {
             {/* Login Button */}
             <button
               type="submit"
+              disabled={loading}
               className="w-full bg-[#003AAB] text-white font-medium py-2.5 rounded-lg 
                        hover:bg-[#002a7f] transition-all duration-200 shadow-lg 
-                       hover:shadow-xl transform hover:-translate-y-0.5"
+                       hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 
+                       disabled:cursor-not-allowed disabled:transform-none"
             >
-              Đăng nhập
+              {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </button>
           </form>
 
